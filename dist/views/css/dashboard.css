@@ -1,0 +1,152 @@
+/* views/css/dashboard.css */
+:root {
+    --card-background: var(--vscode-editor-background);
+    --card-border: var(--vscode-panel-border);
+    --text-color: var(--vscode-foreground);
+    --header-color: var(--vscode-editor-foreground);
+    --accent-color: var(--vscode-focusBorder);
+    --chart-green: rgba(75, 192, 192, 1);
+    --chart-blue: rgba(54, 162, 235, 1);
+    --chart-yellow: rgba(255, 206, 86, 1);
+    --chart-red: rgba(255, 99, 132, 1);
+  }
+  
+  body {
+    font-family: var(--vscode-font-family);
+    padding: 20px;
+    color: var(--text-color);
+    background-color: var(--vscode-editor-background);
+    line-height: 1.5;
+  }
+  
+  h1, h2, h3 {
+    font-weight: normal;
+    margin-bottom: 10px;
+    color: var(--header-color);
+  }
+  
+  .dashboard-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  
+  .card {
+    background-color: var(--card-background);
+    border: 1px solid var(--card-border);
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    border-bottom: 1px solid var(--card-border);
+    padding-bottom: 10px;
+  }
+  
+  .chart-container {
+    position: relative;
+    height: 200px;
+    width: 100%;
+  }
+  
+  .metric-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--card-border);
+  }
+  
+  .metric-row:last-child {
+    border-bottom: none;
+  }
+  
+  .metric-label {
+    font-weight: bold;
+  }
+  
+  .metric-value {
+    font-family: var(--vscode-editor-font-family);
+  }
+  
+  .health-indicator {
+    width: 100%;
+    height: 10px;
+    background-color: var(--vscode-editor-background);
+    border: 1px solid var(--card-border);
+    border-radius: 5px;
+    overflow: hidden;
+    margin-top: 5px;
+  }
+  
+  .health-bar {
+    height: 100%;
+    border-radius: 5px;
+    transition: width 0.5s, background-color 0.5s;
+  }
+  
+  #health-score-container {
+    text-align: center;
+    margin: 20px 0;
+  }
+  
+  .tab-container {
+    margin-bottom: 20px;
+  }
+  
+  .tab-buttons {
+    display: flex;
+    border-bottom: 1px solid var(--card-border);
+  }
+  
+  .tab-button {
+    padding: 8px 16px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-color);
+    border-bottom: 2px solid transparent;
+  }
+  
+  .tab-button:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+  }
+  
+  .tab-button.active {
+    border-bottom: 2px solid var(--accent-color);
+    font-weight: bold;
+  }
+  
+  .tab-content {
+    display: none;
+    padding: 15px 0;
+  }
+  
+  .tab-content.active {
+    display: block;
+  }
+  
+  button {
+    padding: 6px 12px;
+    background-color: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  
+  button:hover {
+    background-color: var(--vscode-button-hoverBackground);
+  }
+  
+  @media (max-width: 800px) {
+    .dashboard-container {
+      grid-template-columns: 1fr;
+    }
+  }

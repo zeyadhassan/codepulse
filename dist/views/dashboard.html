@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodePulse Dashboard</title>
+    <link rel="stylesheet" href="css/dashboard.css">
+    <script>
+        // Placeholder for Chart.js - will be replaced by the extension
+    </script>
+    <!-- CDN Fallback for Chart.js in case local version fails to load -->
+    <script>
+        // Check if Chart is defined after the main script loads
+        window.addEventListener('load', function() {
+            if (typeof Chart === 'undefined') {
+                console.log('Loading Chart.js from CDN as fallback');
+                var script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js';
+                script.onload = function() {
+                    console.log('Chart.js loaded from CDN successfully');
+                    // Re-initialize charts if needed
+                    if (typeof initCharts === 'function') {
+                        initCharts();
+                    }
+                };
+                script.onerror = function() {
+                    console.error('Failed to load Chart.js from CDN');
+                };
+                document.head.appendChild(script);
+            }
+        });
+    </script>
+</head>
+<body>
+    <h1>CodePulse Dashboard</h1>
+    
+    <div class="tab-container">
+        <div class="tab-buttons">
+            <button class="tab-button active" data-tab="overview">Overview</button>
+            <button class="tab-button" data-tab="trends">Trends</button>
+            <button class="tab-button" data-tab="files">Files</button>
+        </div>
+        
+        <div class="tab-content active" id="overview">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Current Project Health</h2>
+                    <button id="refresh-btn">Refresh</button>
+                </div>
+                <div id="health-score-container">
+                    <div style="font-size: 32px; font-weight: bold; text-align: center;" id="health-score">--</div>
+                    <div class="health-indicator">
+                        <div class="health-bar" id="health-bar" style="width: 0%;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="dashboard-container">
+                <div class="card">
+                    <h3>Code Complexity</h3>
+                    <div class="chart-container">
+                        <canvas id="complexityChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>Code Duplication</h3>
+                    <div class="chart-container">
+                        <canvas id="duplicationChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>Key Metrics</h3>
+                <div id="metrics-container">
+                    <div class="metric-row">
+                        <span class="metric-label">Average Complexity:</span>
+                        <span class="metric-value" id="avg-complexity">--</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Duplication Percentage:</span>
+                        <span class="metric-value" id="duplication-pct">--</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Code to Comment Ratio:</span>
+                        <span class="metric-value" id="comment-ratio">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="trends">
+            <div class="card">
+                <h3>Health Score Trend</h3>
+                <div class="chart-container" style="height: 300px;">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>Velocity vs Quality</h3>
+                <div class="chart-container" style="height: 300px;">
+                    <canvas id="velocityQualityChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="files">
+            <div class="card">
+                <h3>File Health</h3>
+                <div id="file-list">
+                    <!-- File list will be populated by JavaScript -->
+                    <div>No files analyzed yet</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="debug-output" style="margin-top: 20px; padding: 10px; background-color: #f5f5f5; border: 1px solid #ddd; max-height: 200px; overflow: auto;">
+        <strong>Debug Output:</strong>
+        <pre id="debug-log"></pre>
+    </div>
+    
+    <script>
+        (function() {
+            // Debug logging function
+            function debugLog(message) {
+                const logElem = document.getElementById('debug-log');
+                if (logElem) {
+                    const timestamp = new Date().toISOString().substr(11, 8);
+                    logElem.textContent += `[${timestamp}] ${message}\n`;
+                    console.log(message);
+                }
+            }
+            
+            debugLog('Dashboard loaded');
+            
+            // Initialize tab functionality
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const tabName = button.getAttribute('data-tab');
+                    
+                    // Deactivate all tabs
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabContents.forEach(content => content.classList.remove('active'));
+                    
+                    // Activate selected tab
+                    button.classList.add('active');
+                    document.getElementById(tabName).classList.add('active');
+                });
+            });
+            
+            // Initialize charts
+            let complexityChart, duplicationChart, trendChart, velocityQualityChart;
+            
+            window.initCharts = function() {
+                try {
+                    debugLog('Initializing charts');
+                    
+                    // Check if Chart is available
+                    if (typeof Chart === 'undefined') {
+                        debugLog('ERROR: Chart.js not loaded!');
+                        return;
+                    }
+                    
+                    debugLog('Chart.js is loaded, version: ' + Chart.version);
+                    
+                    // Complexity chart
+                    const complexityCtx = document.getElementById('complexityChart').getContext('2d');
+                    complexityChart = new Chart(complexityCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: ['Low', 'Medium', 'High', 'Very High'],
+                            datasets: [{
+                                label: 'Functions by Complexity',
+                                data: [0, 0, 0, 0],
+                                backgroundColor: [
+                                    'rgba(75, 192, 192, 0.2)',
+                                    'rgba(54, 162, 235, 0.2)',
+                                    'rgba(255, 206, 86, 0.2)',
+                                    'rgba(255, 99, 132, 0.2)'
+                                ],
+                                borderColor: [
+                                    'rgba(75, 192, 192, 1)',
+                                    'rgba(54, 162, 235, 1)',
+                                    'rgba(255, 206, 86, 1)',
+                                    'rgba(255, 99, 132, 1)'
+                                ],
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        precision: 0
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Duplication chart
+                    const duplicationCtx = document.getElementById('duplicationChart').getContext('2d');
+                    duplicationChart = new Chart(duplicationCtx, {
+                        type: 'pie',
+                        data: {
+                            labels: ['Unique Code', 'Duplicated Code'],
+                            datasets: [{
+                                data: [100, 0],
+                                backgroundColor: [
+                                    'rgba(54, 162, 235, 0.2)',
+                                    'rgba(255, 99, 132, 0.2)'
+                                ],
+                                borderColor: [
+                                    'rgba(54, 162, 235, 1)',
+                                    'rgba(255, 99, 132, 1)'
+                                ],
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false
+                        }
+                    });
+                    
+                    // Trend chart
+                    const trendCtx = document.getElementById('trendChart').getContext('2d');
+                    trendChart = new Chart(trendCtx, {
+                        type: 'line',
+                        data: {
+                            labels: [],  // Will be populated with dates
+                            datasets: [{
+                                label: 'Health Score',
+                                data: [],
+                                fill: false,
+                                borderColor: 'rgba(75, 192, 192, 1)',
+                                tension: 0.1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    max: 100
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Velocity vs Quality chart
+                    const velocityQualityCtx = document.getElementById('velocityQualityChart').getContext('2d');
+                    velocityQualityChart = new Chart(velocityQualityCtx, {
+                        type: 'line',
+                        data: {
+                            labels: [], // Will be populated with dates
+                            datasets: [
+                                {
+                                    label: 'Code Changes',
+                                    data: [],
+                                    yAxisID: 'y',
+                                    fill: false,
+                                    borderColor: 'rgba(54, 162, 235, 1)',
+                                    tension: 0.1
+                                },
+                                {
+                                    label: 'Health Score',
+                                    data: [],
+                                    yAxisID: 'y1',
+                                    fill: false,
+                                    borderColor: 'rgba(75, 192, 192, 1)',
+                                    tension: 0.1
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'left',
+                                    beginAtZero: true,
+                                    title: {
+                                        display: true,
+                                        text: 'Code Changes'
+                                    }
+                                },
+                                y1: {
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'right',
+                                    beginAtZero: true,
+                                    max: 100,
+                                    grid: {
+                                        drawOnChartArea: false
+                                    },
+                                    title: {
+                                        display: true,
+                                        text: 'Health Score'
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    
+                    debugLog('Charts successfully initialized');
+                } catch (error) {
+                    debugLog('Error initializing charts: ' + error.message);
+                }
+            };
+            
+            // Call initCharts to initialize the charts
+            initCharts();
+            
+            // Handle messages from the extension
+            window.addEventListener('message', event => {
+                try {
+                    const message = event.data;
+                    debugLog('Received message: ' + JSON.stringify(message.command));
+                    
+                    switch (message.command) {
+                        case 'setMetrics':
+                            debugLog('Got metrics data: ' + JSON.stringify(message.metrics));
+                            updateDashboard(message.metrics, message.historicalMetrics);
+                            break;
+                    }
+                } catch (error) {
+                    debugLog('Error handling message: ' + error.message);
+                }
+            });
+            
+            // Function to update dashboard with metrics
+            function updateDashboard(metrics, historicalMetrics) {
+                try {
+                    debugLog('Updating dashboard with metrics');
+                    
+                    // Initialize charts if not already initialized
+                    if (!complexityChart) {
+                        initCharts();
+                    }
+                    
+                    // Update health score
+                    const healthScore = metrics?.overallHealth || 0;
+                    document.getElementById('health-score').textContent = Math.round(healthScore);
+                    
+                    const healthBar = document.getElementById('health-bar');
+                    healthBar.style.width = healthScore + '%';
+                    
+                    // Set color based on health score
+                    if (healthScore >= 80) {
+                        healthBar.style.backgroundColor = '#4caf50'; // Green
+                    } else if (healthScore >= 60) {
+                        healthBar.style.backgroundColor = '#ff9800'; // Orange
+                    } else {
+                        healthBar.style.backgroundColor = '#f44336'; // Red
+                    }
+                    
+                    // Check if charts are available before updating
+                    if (complexityChart && metrics?.complexityData) {
+                        debugLog('Updating complexity chart');
+                        complexityChart.data.datasets[0].data = [
+                            metrics.complexityData.low || 0,
+                            metrics.complexityData.medium || 0,
+                            metrics.complexityData.high || 0,
+                            metrics.complexityData.veryHigh || 0
+                        ];
+                        complexityChart.update();
+                    } else {
+                        debugLog('Complexity chart not available for update');
+                    }
+                    
+                    // Update duplication chart
+                    if (duplicationChart && metrics?.duplicationPercentage !== undefined) {
+                        debugLog('Updating duplication chart');
+                        duplicationChart.data.datasets[0].data = [
+                            100 - metrics.duplicationPercentage,
+                            metrics.duplicationPercentage
+                        ];
+                        duplicationChart.update();
+                    }
+                    
+                    // Update metrics
+                    if (metrics?.averageComplexity !== undefined) {
+                        document.getElementById('avg-complexity').textContent = metrics.averageComplexity.toFixed(2);
+                    }
+                    
+                    if (metrics?.duplicationPercentage !== undefined) {
+                        document.getElementById('duplication-pct').textContent = metrics.duplicationPercentage.toFixed(2) + '%';
+                    }
+                    
+                    if (metrics?.codeCommentRatio !== undefined) {
+                        document.getElementById('comment-ratio').textContent = metrics.codeCommentRatio.toFixed(2);
+                    }
+                    
+                    // Update trend chart
+                    if (trendChart && historicalMetrics && historicalMetrics.length > 0) {
+                        debugLog('Updating trend charts');
+                        // Extract dates and health scores
+                        const dates = historicalMetrics.map(m => new Date(m.timestamp).toLocaleDateString());
+                        const scores = historicalMetrics.map(m => m.overallHealth);
+                        const changes = historicalMetrics.map(m => m.codeChanges || 0);
+                        
+                        // Update trend chart
+                        trendChart.data.labels = dates;
+                        trendChart.data.datasets[0].data = scores;
+                        trendChart.update();
+                        
+                        // Update velocity vs quality chart
+                        if (velocityQualityChart) {
+                            velocityQualityChart.data.labels = dates;
+                            velocityQualityChart.data.datasets[0].data = changes;
+                            velocityQualityChart.data.datasets[1].data = scores;
+                            velocityQualityChart.update();
+                        }
+                    }
+                    
+                    // Update file list
+                    const fileList = document.getElementById('file-list');
+                    if (metrics?.fileMetrics && Object.keys(metrics.fileMetrics).length > 0) {
+                        debugLog('Updating file metrics');
+                        let fileHtml = '';
+                        
+                        for (const [filePath, fileData] of Object.entries(metrics.fileMetrics)) {
+                            const fileName = filePath.split('/').pop() || filePath.split('\\').pop() || filePath;
+                            const healthScore = fileData.healthScore || 0;
+                            let healthColor = '';
+                            
+                            if (healthScore >= 80) {
+                                healthColor = '#4caf50'; // Green
+                            } else if (healthScore >= 60) {
+                                healthColor = '#ff9800'; // Orange
+                            } else {
+                                healthColor = '#f44336'; // Red
+                            }
+                            
+                            fileHtml += '<div class="metric-row">' +
+                                '<span class="metric-label">' + fileName + '</span>' +
+                                '<div>' +
+                                '<span class="metric-value">' + Math.round(healthScore) + '</span>' +
+                                '<div class="health-indicator" style="width: 100px;">' +
+                                '<div class="health-bar" style="width: ' + healthScore + '%; background-color: ' + healthColor + ';"></div>' +
+                                '</div>' +
+                                '</div>' +
+                                '</div>';
+                        }
+                        
+                        fileList.innerHTML = fileHtml;
+                    } else {
+                        fileList.innerHTML = '<div>No files analyzed yet</div>';
+                    }
+                    
+                    debugLog('Dashboard update complete');
+                } catch (error) {
+                    debugLog('Error updating dashboard: ' + error.message);
+                }
+            }
+            
+            // Request metrics on load
+            try {
+                debugLog('Requesting metrics from extension');
+                const vscode = acquireVsCodeApi();
+                vscode.postMessage({ command: 'getMetrics' });
+                
+                // Set up refresh button
+                document.getElementById('refresh-btn').addEventListener('click', () => {
+                    debugLog('Refresh button clicked');
+                    vscode.postMessage({ command: 'refreshMetrics' });
+                });
+            } catch (error) {
+                debugLog('Error requesting metrics: ' + error.message);
+            }
+            
+        })();
+    </script>
+</body>
+</html>

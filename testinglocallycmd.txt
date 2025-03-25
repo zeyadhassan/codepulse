@@ -1,0 +1,1 @@
+code --extensionDevelopmentPath=C:\Users\z004nd0b\source\repos\codepulse C:\Users\z004nd0b\source\repos\test-project-for-codepulse
